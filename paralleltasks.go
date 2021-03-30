@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-type parallelTasks struct {
+type ParallelTasks struct {
 	wg      *sync.WaitGroup
 	ctx     context.Context
 	waitCh  chan struct{}
 	errChan chan error
 }
 
-func New(ctx context.Context, taskCount int) parallelTasks {
+func New(ctx context.Context, taskCount int) ParallelTasks {
 
 	wg := sync.WaitGroup{}
 	wg.Add(taskCount)
@@ -20,7 +20,7 @@ func New(ctx context.Context, taskCount int) parallelTasks {
 	waitCh := make(chan struct{})
 	errChan := make(chan error, taskCount)
 
-	return parallelTasks{
+	return ParallelTasks{
 		wg:      &wg,
 		ctx:     ctx,
 		waitCh:  waitCh,
@@ -28,14 +28,14 @@ func New(ctx context.Context, taskCount int) parallelTasks {
 	}
 }
 
-func (pt *parallelTasks) Run(task func(ctx context.Context, errChan chan error)) {
+func (pt *ParallelTasks) Run(task func(ctx context.Context, errChan chan error)) {
 	go func() {
 		defer pt.wg.Done()
 		task(pt.ctx, pt.errChan)
 	}()
 }
 
-func (pt *parallelTasks) Wait() error {
+func (pt *ParallelTasks) Wait() error {
 	go func() {
 		pt.wg.Wait()
 		close(pt.waitCh)
