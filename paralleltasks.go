@@ -5,37 +5,25 @@ import (
 	"sync"
 )
 
-type ParallelTasks struct {
+type tasks struct {
 	wg      *sync.WaitGroup
 	ctx     context.Context
 	waitCh  chan struct{}
 	errChan chan error
 }
-
-func New(ctx context.Context, taskCount int) ParallelTasks {
-
-	wg := sync.WaitGroup{}
-	wg.Add(taskCount)
-
-	waitCh := make(chan struct{})
-	errChan := make(chan error, taskCount)
-
-	return ParallelTasks{
-		wg:      &wg,
-		ctx:     ctx,
-		waitCh:  waitCh,
-		errChan: errChan,
-	}
+type Tasks interface {
+	Run(task func(ctx context.Context, errChan chan error))
+	Wait() error
 }
 
-func (pt *ParallelTasks) Run(task func(ctx context.Context, errChan chan error)) {
+func (pt tasks) Run(task func(ctx context.Context, errChan chan error)) {
 	go func() {
 		defer pt.wg.Done()
 		task(pt.ctx, pt.errChan)
 	}()
 }
 
-func (pt *ParallelTasks) Wait() error {
+func (pt tasks) Wait() error {
 	go func() {
 		pt.wg.Wait()
 		close(pt.waitCh)
@@ -48,5 +36,21 @@ func (pt *ParallelTasks) Wait() error {
 		return (pt.ctx).Err()
 	case <-pt.waitCh:
 		return nil
+	}
+}
+
+func New(ctx context.Context, taskCount int) Tasks {
+
+	wg := sync.WaitGroup{}
+	wg.Add(taskCount)
+
+	waitCh := make(chan struct{})
+	errChan := make(chan error, taskCount)
+
+	return tasks{
+		wg:      &wg,
+		ctx:     ctx,
+		waitCh:  waitCh,
+		errChan: errChan,
 	}
 }
